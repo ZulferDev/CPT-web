@@ -39,6 +39,14 @@
       return;
     }
 
+    const dev = editor.devices.find(d => d.id === editor.selectedDeviceId);
+    if (!dev) return;
+
+    if (dev.type !== 'pc' && dev.type !== 'laptop' && dev.type !== 'server' && dev.type !== 'router') {
+      term.writeln(`\r\n\x1b[31m${dev.name} does not support ping.\x1b[0m`);
+      return;
+    }
+
     simulator.initialize(editor.devices, editor.cables);
     const result = simulator.ping(editor.selectedDeviceId, ip);
 
@@ -57,6 +65,38 @@
 
     if (result.success) {
       term.writeln(`\r\n\x1b[36mPing statistics: round-trip time = ${result.roundTripTime}ms\x1b[0m`);
+    }
+  }
+
+  function showDeviceInfo() {
+    if (!editor.selectedDeviceId) {
+      term.writeln('\x1b[31mNo device selected.\x1b[0m');
+      return;
+    }
+    const dev = editor.devices.find(d => d.id === editor.selectedDeviceId);
+    if (!dev) return;
+
+    term.writeln(`Device: ${dev.name}`);
+    term.writeln(`Type: ${dev.type}`);
+    term.writeln(`Model: ${dev.model}`);
+    term.writeln(`Status: ${dev.status}`);
+
+    if (dev.type === 'switch') {
+      term.writeln(`MAC table entries: 0`);
+    }
+    if (dev.type === 'router') {
+      term.writeln(`Routing table entries: ${dev.config.routingTable.length}`);
+      for (const r of dev.config.routingTable) {
+        term.writeln(`  ${r.network}/${r.mask} via ${r.nextHop} (${r.interfaceId})`);
+      }
+    }
+
+    term.writeln('Interfaces:');
+    for (const iface of dev.interfaces) {
+      const ip = iface.ipAddress && iface.subnetMask
+        ? `${iface.ipAddress}/${iface.subnetMask}`
+        : 'unassigned';
+      term.writeln(`  ${iface.name} - ${ip} (${iface.status})${iface.type === 'console' ? ' [console]' : ''}${iface.type === 'serial' ? ' [serial]' : ''}`);
     }
   }
 
@@ -124,22 +164,7 @@
             handlePing(rawCmd);
           }
         } else if (cmd === 'show') {
-          if (editor.selectedDeviceId) {
-            const dev = editor.devices.find(d => d.id === editor.selectedDeviceId);
-            if (dev) {
-              term.writeln(`Device: ${dev.name}`);
-              term.writeln(`Type: ${dev.type}`);
-              term.writeln(`Model: ${dev.model}`);
-              term.writeln(`Status: ${dev.status}`);
-              term.writeln('Interfaces:');
-              for (const iface of dev.interfaces) {
-                const ip = iface.ipAddress ? `${iface.ipAddress}/${iface.subnetMask}` : 'unassigned';
-                term.writeln(`  ${iface.name} - ${ip} (${iface.status})`);
-              }
-            }
-          } else {
-            term.writeln('\x1b[31mNo device selected.\x1b[0m');
-          }
+          showDeviceInfo();
         } else if (cmd) {
           term.writeln(`\x1b[31mUnknown command or invalid: ${cmd}\x1b[0m`);
         }
@@ -176,7 +201,5 @@
     <span class="transform transition-transform {isOpen ? '' : '-rotate-90'}">▼</span>
     CLI Terminal
   </button>
-  {#if isOpen}
-    <div bind:this={terminalContainer} class="flex-1 min-h-[100px]"></div>
-  {/if}
+  <div bind:this={terminalContainer} class="flex-1 min-h-[100px]" class:hidden={!isOpen}></div>
 </div>

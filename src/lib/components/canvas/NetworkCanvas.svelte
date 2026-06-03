@@ -295,20 +295,20 @@
       case 'switch':
         return Array.from({ length: 8 }, (_, i) => ({
           id: crypto.randomUUID(), name: `FastEthernet0/${i}`, type: 'fast-ethernet' as const,
-          macAddress: generateMAC(), status: 'down' as const,
+          macAddress: generateMAC(), status: 'up' as const,
         }));
       case 'server':
         return [
-          { id: crypto.randomUUID(), name: 'GigabitEthernet0', type: 'gigabit-ethernet', macAddress: generateMAC(), status: 'down' },
+          { id: crypto.randomUUID(), name: 'GigabitEthernet0', type: 'gigabit-ethernet', macAddress: generateMAC(), status: 'up' },
         ];
       case 'hub':
         return Array.from({ length: 4 }, (_, i) => ({
           id: crypto.randomUUID(), name: `Port${i}`, type: 'fast-ethernet' as const,
-          macAddress: generateMAC(), status: 'down' as const,
+          macAddress: generateMAC(), status: 'up' as const,
         }));
       default:
         return [
-          { id: crypto.randomUUID(), name: 'FastEthernet0', type: 'fast-ethernet', macAddress: generateMAC(), status: 'down' },
+          { id: crypto.randomUUID(), name: 'FastEthernet0', type: 'fast-ethernet', macAddress: generateMAC(), status: 'up' },
         ];
     }
   }
