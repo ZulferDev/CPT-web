@@ -6,15 +6,19 @@
   let selectedMask = $state('');
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+  function getEthernetIface(dev: typeof editor.devices[0]) {
+    return dev.interfaces.find(i => i.type === 'gigabit-ethernet' || i.type === 'fast-ethernet');
+  }
+
   $effect(() => {
     const id = editor.selectedDeviceId;
     if (!id) { selectedName = ''; selectedIP = ''; selectedMask = ''; return; }
     const dev = editor.devices.find(d => d.id === id);
     if (!dev) return;
     selectedName = dev.name;
-    const mainIface = dev.interfaces.find(i => i.type === 'gigabit-ethernet' || i.type === 'fast-ethernet');
-    selectedIP = mainIface?.ipAddress ?? '';
-    selectedMask = mainIface?.subnetMask ?? '';
+    const eth = getEthernetIface(dev);
+    selectedIP = eth?.ipAddress ?? '';
+    selectedMask = eth?.subnetMask ?? '';
   });
 
   function debounceSave() {
@@ -27,12 +31,16 @@
     if (!id) return;
     const dev = editor.devices.find(d => d.id === id);
     if (!dev) return;
+    const ethIface = getEthernetIface(dev);
+    if (!ethIface) return;
+
     editor.updateDevice(id, {
       name: selectedName,
-      interfaces: dev.interfaces.map((iface, i) => {
-        if (i === 0) return { ...iface, ipAddress: selectedIP || undefined, subnetMask: selectedMask || undefined };
-        return iface;
-      })
+      interfaces: dev.interfaces.map(iface =>
+        iface.id === ethIface.id
+          ? { ...iface, ipAddress: selectedIP || undefined, subnetMask: selectedMask || undefined }
+          : iface
+      )
     });
   }
 </script>
@@ -73,12 +81,31 @@
       <div class="border-t border-gray-700 pt-2 mt-4">
         <div class="text-gray-400 mb-1">Interfaces</div>
         {#each editor.devices.filter(d => d.id === editor.selectedDeviceId)[0]?.interfaces ?? [] as iface}
-          <div class="flex justify-between py-1 text-gray-300">
-            <span>{iface.name}</span>
-            <span class="{iface.status === 'up' ? 'text-green-400' : 'text-red-400'}">
-              {iface.status}
-              {#if iface.ipAddress} ({iface.ipAddress}){/if}
-            </span>
+          <div class="flex items-center justify-between py-1 text-gray-300">
+            <span class="text-[11px]">{iface.name}</span>
+            <div class="flex items-center gap-2">
+              {#if iface.type === 'gigabit-ethernet' || iface.type === 'fast-ethernet'}
+                <button
+                  class="text-[9px] px-1.5 py-0.5 rounded {iface.status === 'up' ? 'bg-green-800 text-green-300' : 'bg-gray-700 text-gray-400'} hover:bg-opacity-80"
+                  onclick={() => {
+                    const dev = editor.devices.find(d => d.id === editor.selectedDeviceId);
+                    if (!dev) return;
+                    editor.updateDevice(editor.selectedDeviceId!, {
+                      interfaces: dev.interfaces.map(i =>
+                        i.id === iface.id ? { ...i, status: i.status === 'up' ? 'down' as const : 'up' as const } : i
+                      )
+                    });
+                  }}
+                >
+                  {iface.status}
+                </button>
+              {:else}
+                <span class="text-[9px] text-gray-500">{iface.status}</span>
+              {/if}
+              {#if iface.ipAddress}
+                <span class="text-[10px] text-gray-400">{iface.ipAddress}</span>
+              {/if}
+            </div>
           </div>
         {/each}
       </div>
@@ -86,7 +113,7 @@
       <div class="border-t border-gray-700 pt-3 mt-4">
         <button
           class="w-full px-3 py-1.5 text-xs text-red-400 border border-red-800 rounded hover:bg-red-900/30"
-          onclick={() => { const id = editor.selectedDeviceId; if (id) { editor.removeDevice(id); } }}
+          onclick={() => { const id = editor.selectedDeviceId; if (id) { editor.removeDevice(id); editor.selectedDeviceId = null; } }}
         >
           Delete Device
         </button>

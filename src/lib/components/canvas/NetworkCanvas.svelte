@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { editor } from '$lib/stores/editor.svelte';
-  import type { Device, Position, DeviceType, Interface, Cable, LinkEndpoint } from '$lib/types';
+  import type { Device, Position, DeviceType, Interface, Cable, LinkEndpoint, CableType, InterfaceType } from '$lib/types';
 
   let container: HTMLDivElement;
   let stage: import('konva').default.Stage;
   let Konva: typeof import('konva').default;
+
   let gridLayer: Konva.Layer;
   let deviceLayer: Konva.Layer;
   let cableLayer: Konva.Layer;
@@ -52,7 +53,8 @@
   $effect(() => {
     const devs = editor.devices;
     const cabs = editor.cables;
-    const sel = editor.selectedDeviceId;
+    const selId = editor.selectedDeviceId;
+    const cableOri = editor.cableOrigin;
     if (!stage || !deviceLayer) return;
     redrawDevices();
     redrawCables();
@@ -69,11 +71,10 @@
       const scaleBy = 1.1;
       const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
       stage.scale({ x: newScale, y: newScale });
-      const newPos = {
+      stage.position({
         x: pointer.x - (pointer.x - stage.x()) / oldScale * newScale,
         y: pointer.y - (pointer.y - stage.y()) / oldScale * newScale,
-      };
-      stage.position(newPos);
+      });
       stage.batchDraw();
     });
 
@@ -96,6 +97,12 @@
       if (clickedOnEmpty && editor.activeTool === 'select') {
         editor.selectedDeviceId = null;
         editor.cableOrigin = null;
+        if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
+      }
+
+      if (clickedOnEmpty && editor.activeTool === 'cable') {
+        editor.cableOrigin = null;
+        if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
       }
     });
 
@@ -108,6 +115,7 @@
         });
         lastPos = pos;
         stage.batchDraw();
+        return;
       }
 
       if (editor.activeTool === 'cable' && editor.cableOrigin && previewLine) {
@@ -117,8 +125,8 @@
           x: (pos.x - stage.x()) / scale,
           y: (pos.y - stage.y()) / scale,
         };
-        const points = previewLine.points();
-        previewLine.points([points[0], points[1], worldPos.x, worldPos.y]);
+        const pts = previewLine.points();
+        previewLine.points([pts[0], pts[1], worldPos.x, worldPos.y]);
         previewLayer.batchDraw();
       }
     });
@@ -128,9 +136,7 @@
       stage.container().style.cursor = 'default';
     });
 
-    stage.on('contextmenu', (e) => {
-      e.evt.preventDefault();
-    });
+    stage.on('contextmenu', (e) => { e.evt.preventDefault(); });
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -138,6 +144,12 @@
       if (editor.selectedDeviceId) {
         editor.removeDevice(editor.selectedDeviceId);
         editor.selectedDeviceId = null;
+        return;
+      }
+      if (editor.selectedCableId) {
+        editor.removeCable(editor.selectedCableId);
+        editor.selectedCableId = null;
+        return;
       }
     }
     if (e.key === 'Escape') {
@@ -146,40 +158,47 @@
     }
   }
 
-  function handleDeviceClick(dev: Device, e: Konva.KonvaEventObject<MouseEvent>) {
+  function handleDeviceClick(dev: Device) {
     if (editor.activeTool === 'cable') {
-      handleCableClick(dev, e);
+      handleCableClick(dev);
       return;
     }
     editor.selectedDeviceId = dev.id;
+    editor.activeTool = 'select';
   }
 
-  const CABLE_IFACE_MAP: Record<CableType, InterfaceType> = {
-    copper: 'fast-ethernet',
-    serial: 'serial',
-    console: 'console',
-    fiber: 'gigabit-ethernet',
-  };
+  function getCompatibleInterfaces(dev: Device, cableType: CableType): Interface[] {
+    const compatMap: Record<CableType, InterfaceType[]> = {
+      copper: ['fast-ethernet', 'gigabit-ethernet'],
+      serial: ['serial'],
+      console: ['console'],
+      fiber: ['gigabit-ethernet'],
+    };
+    const types = compatMap[cableType];
+    const available = dev.interfaces.filter(i => types.includes(i.type));
+    return available.length > 0 ? available : dev.interfaces.filter(i => i.type !== 'serial' && i.type !== 'console');
+  }
 
-  function handleCableClick(dev: Device, e: Konva.KonvaEventObject<MouseEvent>) {
+  function handleCableClick(dev: Device) {
     const origin = editor.cableOrigin;
-    const targetIface = dev.interfaces.find(i => i.type === CABLE_IFACE_MAP[editor.activeCableType] || i.type === 'fast-ethernet');
+    const candidates = getCompatibleInterfaces(dev, editor.activeCableType);
+    const targetIface = candidates[0];
     if (!targetIface) return;
 
     if (!origin) {
       editor.cableOrigin = { deviceId: dev.id, interfaceId: targetIface.id };
-      const pos = stage.getPointerPosition()!;
       const scale = stage.scaleX();
+      const pos = getPortPosition(dev, dev.interfaces.indexOf(targetIface));
+      const pointer = stage.getPointerPosition()!;
       const worldPos = {
-        x: (pos.x - stage.x()) / scale,
-        y: (pos.y - stage.y()) / scale,
+        x: (pointer.x - stage.x()) / scale,
+        y: (pointer.y - stage.y()) / scale,
       };
+
       previewLine = new Konva.Line({
-        points: [dev.position.x, dev.position.y, worldPos.x, worldPos.y],
+        points: [pos.x, pos.y, worldPos.x, worldPos.y],
         stroke: editor.activeCableType === 'serial' ? '#ed8936' : editor.activeCableType === 'console' ? '#a0aec0' : '#4299e1',
-        strokeWidth: 2,
-        dash: [5, 5],
-        lineCap: 'round',
+        strokeWidth: 2, dash: [5, 5], lineCap: 'round',
       });
       previewLayer.add(previewLine);
       previewLayer.draw();
@@ -196,16 +215,25 @@
     }
   }
 
+  function getPortPosition(dev: Device, ifaceIndex: number): Position {
+    const s = DEVICE_SIZES[dev.type] || { w: 60, h: 40 };
+    const portsOnLeft = ifaceIndex < 4;
+    const idx = ifaceIndex % 4;
+    const xOffset = portsOnLeft ? -s.w / 2 - 5 : s.w / 2 + 5;
+    return {
+      x: dev.position.x + xOffset,
+      y: dev.position.y - s.h / 2 + 10 + idx * 12,
+    };
+  }
+
   function drawGrid() {
     if (!gridLayer) return;
     gridLayer.destroyChildren();
     const rect = container.getBoundingClientRect();
-
     gridLayer.add(new Konva.Rect({
       x: 0, y: 0, width: rect.width, height: rect.height,
       fill: '#1a202c', name: 'bg',
     }));
-
     for (let x = 0; x < rect.width; x += GRID) {
       gridLayer.add(new Konva.Line({ points: [x, 0, x, rect.height], stroke: '#2d3748', strokeWidth: 0.5 }));
     }
@@ -334,20 +362,23 @@
     group.add(new Konva.Text({
       text: dev.name, fontSize: 9, fill: '#a0aec0',
       align: 'center', width: 100, x: -50,
-      y: DEVICE_SIZES[dev.type] ? DEVICE_SIZES[dev.type].h / 2 + 2 : 27,
+      y: (DEVICE_SIZES[dev.type] ? DEVICE_SIZES[dev.type].h : 40) / 2 + 2,
     }));
 
     dev.interfaces.forEach((iface, i) => {
+      const isOrigin = editor.cableOrigin?.interfaceId === iface.id;
       group.add(new Konva.Circle({
-        x: -size.w / 2 - 5, y: -size.h / 2 + 10 + i * 12,
-        radius: 3,
-        fill: iface.status === 'up' ? '#48bb78' : '#718096',
-        stroke: editor.cableOrigin?.interfaceId === iface.id ? '#ffd700' : '#2d3748',
-        strokeWidth: 1,
+        x: getPortPosition(dev, i).x - dev.position.x,
+        y: getPortPosition(dev, i).y - dev.position.y,
+        radius: 3.5,
+        fill: iface.status === 'up' ? '#48bb78' : isOrigin ? '#ffd700' : '#718096',
+        stroke: isOrigin ? '#ffd700' : '#2d3748',
+        strokeWidth: isOrigin ? 2 : 1,
       }));
     });
 
-    group.on('click', (e) => handleDeviceClick(dev, e));
+    group.on('click', () => handleDeviceClick(dev));
+
     group.on('dragend', () => {
       const pos = group.position();
       const snapped = snapToGrid(pos);
@@ -355,6 +386,7 @@
       editor.updateDevice(dev.id, { position: snapped });
       redrawCables();
     });
+
     group.on('dblclick', () => { editor.selectedDeviceId = dev.id; editor.activeTool = 'select'; });
 
     return group;
@@ -362,9 +394,7 @@
 
   function redrawDevices() {
     deviceLayer.destroyChildren();
-    editor.devices.forEach(dev => {
-      deviceLayer.add(createDeviceGroup(dev));
-    });
+    editor.devices.forEach(dev => { deviceLayer.add(createDeviceGroup(dev)); });
     deviceLayer.draw();
   }
 
@@ -378,23 +408,24 @@
       const toIface = toDev.interfaces.find(i => i.id === cable.to.interfaceId);
       if (!fromIface || !toIface) return;
 
-      const fromIdx = fromDev.interfaces.indexOf(fromIface);
-      const toIdx = toDev.interfaces.indexOf(toIface);
-      const fs = DEVICE_SIZES[fromDev.type] || { w: 60, h: 40 };
-      const ts = DEVICE_SIZES[toDev.type] || { w: 60, h: 40 };
+      const p1 = getPortPosition(fromDev, fromDev.interfaces.indexOf(fromIface));
+      const p2 = getPortPosition(toDev, toDev.interfaces.indexOf(toIface));
 
-      const p1 = { x: fromDev.position.x - fs.w / 2 - 5, y: fromDev.position.y - fs.h / 2 + 10 + fromIdx * 12 };
-      const p2 = { x: toDev.position.x - ts.w / 2 - 5, y: toDev.position.y - ts.h / 2 + 10 + toIdx * 12 };
-
-      cableLayer.add(new Konva.Line({
+      const line = new Konva.Line({
         points: [p1.x, p1.y, p2.x, p2.y],
         stroke: cable.type === 'serial' ? '#ed8936' : cable.type === 'console' ? '#a0aec0' : '#4299e1',
         strokeWidth: 2, tension: 0.5, lineCap: 'round', id: cable.id,
-      }));
+      });
+
+      line.on('click', () => { editor.selectedCableId = cable.id; });
+      line.on('mouseenter', () => { line.strokeWidth(4); cableLayer.draw(); });
+      line.on('mouseleave', () => { line.strokeWidth(2); cableLayer.draw(); });
+
+      cableLayer.add(line);
     });
     cableLayer.draw();
     cableLayer.moveToTop();
   }
 </script>
 
-<div bind:this={container} class="flex-1 bg-gray-900 overflow-hidden cursor-crosshair"></div>
+<div bind:this={container} class="flex-1 bg-gray-900 overflow-hidden"></div>

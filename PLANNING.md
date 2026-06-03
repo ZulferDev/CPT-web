@@ -354,9 +354,12 @@ Operasi:
 15. ✅ Canvas dengan Konva.js: grid, zoom (scroll), pan (shift+drag)
 16. ✅ Drag device dari palette → canvas (snap to grid)
 17. ✅ Klik device → config panel muncul (sidebar kanan)
-18. ✅ Config Panel: nama device, IP, subnet mask, interface list
+18. ✅ Config Panel: nama device, IP, subnet mask, interface list, toggle status up/down
 19. ✅ CLI Terminal (xterm.js) — collapsible, basic command parser
-20. ✅ Status Bar: project name, device/cable count, clock
-21. ✅ Kabel: render lines antar device (Copper/Serial/Console warna beda)
+20. ✅ Status Bar: project name, device/cable count, tool mode hints
+21. ✅ Kabel: klik device A → preview → device B. Cable select/hover/delete.
+22. ✅ Delete device (Del key / button) + delete cable
+23. ✅ Cable port highlight (gold) saat cable mode
+24. ✅ Cable port position kiri/kanan berdasarkan index interface
 11. CLI: xterm.js + command parser
 12. Storage: auto-save IndexedDB + export/import file

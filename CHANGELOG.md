@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0] - 2026-06-03
+
+### Fixed
+- **Bug 1**: `handleCableClick` — interface logic diperbaiki. Sekarang serial cable hanya bisa ke serial port, console ke console port, copper/fiber ke ethernet port. Ada fallback cerdas jika port yang cocok tidak tersedia.
+- **Bug 2**: ConfigPanel IP sekarang simpan ke interface ethernet pertama (`gigabit-ethernet` atau `fast-ethernet`), bukan hardcoded index 0.
+- **Bug 3**: `$effect` di Canvas sekarang track `editor.cableOrigin` → port highlight (warna emas) update saat cable mode aktif.
+- **Bug 4**: Cable bisa di-hover (garis menebal) dan bisa di-delete via `selectedCableId` + Delete key.
+- **Bug 5**: Cable preview line & cable rendering sekarang pakai `getPortPosition()` — port kiri untuk index < 4, kanan untuk >= 4.
+- **Bug 6**: Fixed tipe `Konva.KonvaEventObject<MouseEvent>` dengan inline type.
+- Cable line click → select cable, mouse hover → tebal garis 4px.
+- Interface status toggle (up/down) dari ConfigPanel.
+- Click empty space di `cable` tool → cancel cable origin.
+- Cable origin cancel otomatis saat select tool atau klik kosong.
+
 ## [0.1.2] - 2026-06-03
 
 ### Fixed
