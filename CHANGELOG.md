@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1] - 2026-06-03
+
+### Fixed
+- **Double coordinate transform (CRITICAL)**: `stage.getPointerPosition()` sudah mengembalikan world coordinates. Semua kode yang melakukan `(pointer - stage.position) / scale` lagi over-transform, menyebabkan device placement, cable preview, dan semua interaksi canvas rusak saat zoom/pan. Diperbaiki dengan fungsi `getPointerWorldPos()`.
+- **Cable selection tidak hilang**: `selectedCableId` sekarang di-clear saat klik empty space di select/cable mode.
+- **Visual feedback cable selection**: Cable yang terpilih sekarang warna gold + stroke lebih tebal (`redrawCables()`).
+- **Interface collision**: `getFreeInterfaces()` memfilter interface yang sudah terkoneksi, mencegah multi-kabel di port sama.
+
 ## [0.3.0] - 2026-06-03
 
 ### Added

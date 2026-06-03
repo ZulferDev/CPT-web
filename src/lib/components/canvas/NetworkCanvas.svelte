@@ -60,6 +60,12 @@
     redrawCables();
   });
 
+  function getPointerWorldPos(): Position {
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return { x: 0, y: 0 };
+    return { x: pointer.x, y: pointer.y };
+  }
+
   function bindEvents() {
     let isPanning = false;
     let lastPos: Position = { x: 0, y: 0 };
@@ -67,7 +73,8 @@
     stage.on('wheel', (e) => {
       e.evt.preventDefault();
       const oldScale = stage.scaleX();
-      const pointer = stage.getPointerPosition()!;
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
       const scaleBy = 1.1;
       const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
       stage.scale({ x: newScale, y: newScale });
@@ -78,37 +85,44 @@
       stage.batchDraw();
     });
 
+    function clearSelection() {
+      editor.selectedDeviceId = null;
+      editor.selectedCableId = null;
+      editor.cableOrigin = null;
+      if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
+    }
+
     stage.on('mousedown', (e) => {
       if (e.evt.button === 1 || e.evt.shiftKey) {
         isPanning = true;
-        lastPos = stage.getPointerPosition()!;
+        lastPos = stage.getPointerPosition() || { x: 0, y: 0 };
         stage.container().style.cursor = 'grabbing';
         return;
       }
 
       const targetLayer = e.target.getLayer?.();
-      const clickedOnEmpty = targetLayer === gridLayer || e.target === stage;
+      const clickedOnEmpty = targetLayer === gridLayer;
 
       if (clickedOnEmpty && editor.activeTool === 'device') {
-        addDeviceFromPalette(stage.getPointerPosition()!);
+        const dev = createDeviceAt(getPointerWorldPos());
+        if (dev) editor.addDevice(dev);
+        return;
+      }
+
+      if (clickedOnEmpty && editor.activeTool === 'cable') {
+        clearSelection();
         return;
       }
 
       if (clickedOnEmpty && editor.activeTool === 'select') {
-        editor.selectedDeviceId = null;
-        editor.cableOrigin = null;
-        if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
-      }
-
-      if (clickedOnEmpty && editor.activeTool === 'cable') {
-        editor.cableOrigin = null;
-        if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
+        clearSelection();
       }
     });
 
     stage.on('mousemove', () => {
       if (isPanning) {
-        const pos = stage.getPointerPosition()!;
+        const pos = stage.getPointerPosition();
+        if (!pos) return;
         stage.position({
           x: stage.x() + pos.x - lastPos.x,
           y: stage.y() + pos.y - lastPos.y,
@@ -119,14 +133,9 @@
       }
 
       if (editor.activeTool === 'cable' && editor.cableOrigin && previewLine) {
-        const pos = stage.getPointerPosition()!;
-        const scale = stage.scaleX();
-        const worldPos = {
-          x: (pos.x - stage.x()) / scale,
-          y: (pos.y - stage.y()) / scale,
-        };
+        const pos = getPointerWorldPos();
         const pts = previewLine.points();
-        previewLine.points([pts[0], pts[1], worldPos.x, worldPos.y]);
+        previewLine.points([pts[0], pts[1], pos.x, pos.y]);
         previewLayer.batchDraw();
       }
     });
@@ -164,6 +173,7 @@
       return;
     }
     editor.selectedDeviceId = dev.id;
+    editor.selectedCableId = null;
     editor.activeTool = 'select';
   }
 
@@ -179,21 +189,25 @@
     return available.length > 0 ? available : dev.interfaces.filter(i => i.type !== 'serial' && i.type !== 'console');
   }
 
+  function getFreeInterfaces(dev: Device, cableType: CableType): Interface[] {
+    const connectedIfaceIds = new Set(
+      editor.cables
+        .filter(c => c.from.deviceId === dev.id || c.to.deviceId === dev.id)
+        .flatMap(c => [c.from.interfaceId, c.to.interfaceId])
+    );
+    return getCompatibleInterfaces(dev, cableType).filter(i => !connectedIfaceIds.has(i.id));
+  }
+
   function handleCableClick(dev: Device) {
     const origin = editor.cableOrigin;
-    const candidates = getCompatibleInterfaces(dev, editor.activeCableType);
+    const candidates = getFreeInterfaces(dev, editor.activeCableType);
     const targetIface = candidates[0];
     if (!targetIface) return;
 
     if (!origin) {
       editor.cableOrigin = { deviceId: dev.id, interfaceId: targetIface.id };
-      const scale = stage.scaleX();
       const pos = getPortPosition(dev, dev.interfaces.indexOf(targetIface));
-      const pointer = stage.getPointerPosition()!;
-      const worldPos = {
-        x: (pointer.x - stage.x()) / scale,
-        y: (pointer.y - stage.y()) / scale,
-      };
+      const worldPos = getPointerWorldPos();
 
       previewLine = new Konva.Line({
         points: [pos.x, pos.y, worldPos.x, worldPos.y],
@@ -203,6 +217,18 @@
       previewLayer.add(previewLine);
       previewLayer.draw();
     } else if (origin.deviceId !== dev.id) {
+      const originCandidates = getFreeInterfaces(
+        editor.devices.find(d => d.id === origin.deviceId)!,
+        editor.activeCableType
+      );
+      const originIface = originCandidates.find(i => i.id === origin.interfaceId) ||
+        editor.devices.find(d => d.id === origin.deviceId)?.interfaces.find(i => i.id === origin.interfaceId);
+      if (!originIface) {
+        editor.cableOrigin = null;
+        if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
+        return;
+      }
+
       const cable: Cable = {
         id: crypto.randomUUID(),
         type: editor.activeCableType,
@@ -300,14 +326,8 @@
     'wireless-router': { w: 70, h: 50 },
   };
 
-  function addDeviceFromPalette(pos: Position) {
-    const scale = stage.scaleX();
-    const worldPos = {
-      x: (pos.x - stage.x()) / scale,
-      y: (pos.y - stage.y()) / scale,
-    };
-    const snapped = snapToGrid(worldPos);
-
+  function createDeviceAt(pos: Position): Device | null {
+    const snapped = snapToGrid(pos);
     const dev: Device = {
       id: crypto.randomUUID(),
       type: editor.activeDeviceType,
@@ -318,7 +338,7 @@
       config: { hostname: `Device${editor.devices.length + 1}`, routingTable: [] },
       status: 'on',
     };
-    editor.addDevice(dev);
+    return dev;
   }
 
   function createDeviceGroup(dev: Device): Konva.Group {
@@ -385,10 +405,9 @@
       const snapped = snapToGrid(pos);
       group.position(snapped);
       editor.updateDevice(dev.id, { position: snapped });
-      redrawCables();
     });
 
-    group.on('dblclick', () => { editor.selectedDeviceId = dev.id; editor.activeTool = 'select'; });
+    group.on('dblclick', () => { editor.selectedDeviceId = dev.id; editor.selectedCableId = null; editor.activeTool = 'select'; });
 
     return group;
   }
@@ -401,6 +420,7 @@
 
   function redrawCables() {
     cableLayer.destroyChildren();
+    const selectedId = editor.selectedCableId;
     editor.cables.forEach(cable => {
       const fromDev = editor.devices.find(d => d.id === cable.from.deviceId);
       const toDev = editor.devices.find(d => d.id === cable.to.deviceId);
@@ -412,15 +432,33 @@
       const p1 = getPortPosition(fromDev, fromDev.interfaces.indexOf(fromIface));
       const p2 = getPortPosition(toDev, toDev.interfaces.indexOf(toIface));
 
+      const isSelected = cable.id === selectedId;
+      const isHovered = cable.id === editor.selectedCableId;
+
       const line = new Konva.Line({
         points: [p1.x, p1.y, p2.x, p2.y],
-        stroke: cable.type === 'serial' ? '#ed8936' : cable.type === 'console' ? '#a0aec0' : '#4299e1',
-        strokeWidth: 2, tension: 0.5, lineCap: 'round', id: cable.id,
+        stroke: isSelected ? '#ffd700' : cable.type === 'serial' ? '#ed8936' : cable.type === 'console' ? '#a0aec0' : '#4299e1',
+        strokeWidth: isSelected ? 4 : 2,
+        tension: 0.5, lineCap: 'round', id: cable.id,
       });
 
-      line.on('click', () => { editor.selectedCableId = cable.id; });
-      line.on('mouseenter', () => { line.strokeWidth(4); cableLayer.draw(); });
-      line.on('mouseleave', () => { line.strokeWidth(2); cableLayer.draw(); });
+      line.on('click', () => {
+        editor.selectedCableId = cable.id;
+        editor.selectedDeviceId = null;
+        redrawCables();
+      });
+      line.on('mouseenter', () => {
+        if (editor.selectedCableId !== cable.id) {
+          line.strokeWidth(4);
+          cableLayer.draw();
+        }
+      });
+      line.on('mouseleave', () => {
+        if (editor.selectedCableId !== cable.id) {
+          line.strokeWidth(2);
+          cableLayer.draw();
+        }
+      });
 
       cableLayer.add(line);
     });
