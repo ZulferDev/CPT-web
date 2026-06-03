@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.2] - 2026-06-03
+
+### Fixed
+- **Canvas**: Device tidak muncul setelah di-click — `$effect` dependency tracking issue. `editor.devices` tidak terbaca saat stage null, jadi Svelte tidak track sebagai dependency. Fix: baca `editor.devices` dan `editor.cables` sebelum guard clause.
+
 ## [0.1.1] - 2026-06-03
 
 ### Fixed
