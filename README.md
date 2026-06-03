@@ -10,13 +10,20 @@ Svelte 5 · TypeScript · Konva.js · Dexie.js · xterm.js · Tailwind CSS v4
 
 ## Status
 
-| Phase | Fitur | Status |
-|-------|-------|--------|
-| **0** | Project scaffolding | ✅ |
-| **1** | Layout + Canvas + Device palette + Config panel + CLI | ✅ |
-| **1** | Kabel (interaksi) | 🔄 |
-| **1** | Auto-save + export/import dialog | 🔄 |
-| **1** | Simulation engine (ICMP, ARP) | 📝 |
+| Fitur | Status |
+|-------|--------|
+| Toolbar + device palette | ✅ Berfungsi |
+| Canvas device placement (click-to-place) | ✅ Berfungsi |
+| Device drag on canvas + snap to grid | ✅ Berfungsi |
+| Zoom (scroll) + Pan (shift+drag) | ✅ Berfungsi |
+| Device selection + highlight | ✅ Berfungsi |
+| Config panel (name, IP, mask) | ✅ Berfungsi |
+| Kabel klik-to-connect (copper/serial/console) | ✅ Berfungsi |
+| Delete device (Del key / button) | ✅ Berfungsi |
+| CLI terminal (xterm.js) | ✅ UI, basic parser |
+| Export/Import `.cptw` | ✅ Berfungsi |
+| Simulation engine (ICMP, ARP) | 📝 Belum |
+| Auto-save IndexedDB | 📝 Belum |
 
 ## Development
 
@@ -29,7 +36,7 @@ pnpm preview   # preview build
 
 ## Format File
 
-Proyek disimpan sebagai `.cptw` (JSON). Bisa di-export/download dan di-import via drag-drop atau file picker.
+Proyek disimpan sebagai `.cptw` (JSON). Bisa di-export/download dan di-import via file picker.
 
 ## Lisensi
 

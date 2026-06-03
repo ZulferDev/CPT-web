@@ -181,7 +181,7 @@ Tidak perlu login, tidak perlu server.
 ### MVP (Phase 1 — Target: 2 bulan)
 - [x] Toolbar + device palette (sidebar kiri)
 - [x] Canvas drag-and-drop perangkat (Konva.js)
-- [ ] Koneksi kabel (copper, serial, console) — render done, interaksi menyusul
+- [x] Koneksi kabel (copper, serial, console) — klik port A → port B, preview line, escape to cancel
 - [x] Device library: Router 2811, Switch 2960, PC, Server, Hub, Laptop, Wireless
 - [x] Konfigurasi IP via panel
 - [x] CLI terminal (xterm.js) — dasar, collapsible

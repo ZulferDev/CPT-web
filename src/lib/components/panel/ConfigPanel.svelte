@@ -4,26 +4,29 @@
   let selectedName = $state('');
   let selectedIP = $state('');
   let selectedMask = $state('');
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   $effect(() => {
     const id = editor.selectedDeviceId;
-    if (id) {
-      const dev = editor.devices.find(d => d.id === id);
-      if (dev) {
-        selectedName = dev.name;
-        const mainIface = dev.interfaces.find(i => i.ipAddress);
-        selectedIP = mainIface?.ipAddress ?? '';
-        selectedMask = mainIface?.subnetMask ?? '';
-      }
-    }
+    if (!id) { selectedName = ''; selectedIP = ''; selectedMask = ''; return; }
+    const dev = editor.devices.find(d => d.id === id);
+    if (!dev) return;
+    selectedName = dev.name;
+    const mainIface = dev.interfaces.find(i => i.type === 'gigabit-ethernet' || i.type === 'fast-ethernet');
+    selectedIP = mainIface?.ipAddress ?? '';
+    selectedMask = mainIface?.subnetMask ?? '';
   });
 
-  function onChange() {
+  function debounceSave() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(doSave, 300);
+  }
+
+  function doSave() {
     const id = editor.selectedDeviceId;
     if (!id) return;
     const dev = editor.devices.find(d => d.id === id);
     if (!dev) return;
-
     editor.updateDevice(id, {
       name: selectedName,
       interfaces: dev.interfaces.map((iface, i) => {
@@ -43,26 +46,26 @@
       <div>
         <label class="block text-gray-400 mb-1" for="dev-name">Device Name</label>
         <input id="dev-name"
-          class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white"
+          class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white outline-none focus:border-cyan-500"
           bind:value={selectedName}
-          oninput={onChange}
+          oninput={debounceSave}
         />
       </div>
       <div>
         <label class="block text-gray-400 mb-1" for="dev-ip">IP Address</label>
         <input id="dev-ip"
-          class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white"
+          class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white outline-none focus:border-cyan-500"
           bind:value={selectedIP}
-          oninput={onChange}
+          oninput={debounceSave}
           placeholder="192.168.1.1"
         />
       </div>
       <div>
         <label class="block text-gray-400 mb-1" for="dev-mask">Subnet Mask</label>
         <input id="dev-mask"
-          class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white"
+          class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white outline-none focus:border-cyan-500"
           bind:value={selectedMask}
-          oninput={onChange}
+          oninput={debounceSave}
           placeholder="255.255.255.0"
         />
       </div>
@@ -78,6 +81,15 @@
             </span>
           </div>
         {/each}
+      </div>
+
+      <div class="border-t border-gray-700 pt-3 mt-4">
+        <button
+          class="w-full px-3 py-1.5 text-xs text-red-400 border border-red-800 rounded hover:bg-red-900/30"
+          onclick={() => { const id = editor.selectedDeviceId; if (id) { editor.removeDevice(id); } }}
+        >
+          Delete Device
+        </button>
       </div>
     </div>
   </aside>

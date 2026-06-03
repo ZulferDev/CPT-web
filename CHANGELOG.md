@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.1] - 2026-06-03
+
+### Fixed
+- **Canvas**: Click on empty space only places device (not on existing devices)
+- **Canvas**: Seleksi device klik — gold border highlight on selected
+- **Canvas**: Cable interaction — klik port A → dashed preview → klik port B to connect. Escape/Ctrl+Z to cancel
+- **Canvas**: Delete device with Delete/Backspace key
+- **Canvas**: Right-click context menu disabled (no browser menu)
+- **ConfigPanel**: Debounced save (300ms) untuk hindari re-render loop
+- **ConfigPanel**: Added Delete Device button
+- **ConfigPanel**: Fixed `$effect` reactivity for form field sync
+- **StatusBar**: Contextual hints (tool mode, cable origin state)
+
 ## [0.1.0] - 2026-06-03
 
 ### Added
@@ -13,9 +26,6 @@
 - Cable rendering: color-coded lines (Copper=blue, Serial=orange, Console=gray)
 - Editor store refactored to class pattern (Svelte 5 runes)
 - Dynamic import for Konva.js (reduced initial bundle to 26KB)
-
-### Changed
-- Store pattern from module-level `$state` exports → class with `$state` properties
 
 ## [0.0.1] - 2026-06-03
 
