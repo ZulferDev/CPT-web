@@ -212,7 +212,7 @@
       previewLine = new Konva.Line({
         points: [pos.x, pos.y, worldPos.x, worldPos.y],
         stroke: editor.activeCableType === 'serial' ? '#ed8936' : editor.activeCableType === 'console' ? '#a0aec0' : '#4299e1',
-        strokeWidth: 2, dash: [5, 5], lineCap: 'round',
+        strokeWidth: 2, dash: [5, 5], lineCap: 'round', listening: false,
       });
       previewLayer.add(previewLine);
       previewLayer.draw();

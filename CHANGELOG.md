@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.3] - 2026-06-03
+
+### Fixed
+- **Preview line mencegat klik (CRITICAL)**: `previewLayer` di atas `deviceLayer`, dan ujung preview line selalu mengikuti posisi mouse. Saat klik kedua (target device), mouse tepat berada di ujung preview line → klik mengenai preview line, bukan device. Diperbaiki dengan `listening: false` pada preview line sehingga event tembus ke device di bawahnya.
+- Cable layer tetap di bawah device layer (tidak panggil `moveToTop()`).
+
 ## [0.3.2] - 2026-06-03
 
 ### Fixed
