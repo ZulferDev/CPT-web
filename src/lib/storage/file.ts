@@ -1,9 +1,5 @@
 import type { CptwFile } from '$lib/types';
 
-function generateId(): string {
-  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 11);
-}
-
 export function createNewProject(name: string): CptwFile {
   const now = new Date().toISOString();
   return {
@@ -17,7 +13,8 @@ export function createNewProject(name: string): CptwFile {
 }
 
 export function exportToFile(project: CptwFile): void {
-  const json = JSON.stringify(project, null, 2);
+  const exportData = { ...project, updatedAt: new Date().toISOString() };
+  const json = JSON.stringify(exportData, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -32,21 +29,40 @@ export function importFromFile(): Promise<CptwFile> {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.cptw,application/json';
+
+    let cancelled = true;
+    const timeout = setTimeout(() => {
+      if (cancelled) reject(new Error('Import cancelled'));
+    }, 300 * 1000);
+
     input.onchange = async () => {
+      cancelled = false;
+      clearTimeout(timeout);
       const file = input.files?.[0];
       if (!file) { reject(new Error('No file selected')); return; }
       try {
         const text = await file.text();
         const project = JSON.parse(text) as CptwFile;
         if (!project.version || !project.topology) {
-          reject(new Error('Invalid .cptw file'));
+          reject(new Error('Invalid .cptw file: missing version or topology'));
           return;
         }
+        if (!project.createdAt) project.createdAt = new Date().toISOString();
         resolve(project);
       } catch (e) {
-        reject(new Error('Failed to parse file'));
+        reject(new Error('Failed to parse file: ' + (e instanceof Error ? e.message : 'unknown error')));
       }
     };
+
+    window.addEventListener('focus', () => {
+      setTimeout(() => {
+        if (cancelled && !input.files?.length) {
+          clearTimeout(timeout);
+          reject(new Error('Import cancelled'));
+        }
+      }, 200);
+    }, { once: true });
+
     input.click();
   });
 }

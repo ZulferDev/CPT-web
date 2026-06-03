@@ -3,6 +3,8 @@
   import { exportToFile, importFromFile, createNewProject } from '$lib/storage/file';
   import type { CptwFile } from '$lib/types';
 
+  let importError = $state<string | null>(null);
+
   const tools = [
     { id: 'select', label: 'Select', icon: '⬆' },
     { id: 'device', label: 'Device', icon: '⊞' },
@@ -11,18 +13,22 @@
   ] as const;
 
   function handleNew() {
-    if (confirm('Create new project? Unsaved changes will be lost.')) {
-      const p = createNewProject('Untitled');
-      editor.loadProject([], [], [], p.name);
-    }
+    if (editor.devices.length > 0 && !confirm('Create new project? All current work will be lost.')) return;
+    const p = createNewProject('Untitled');
+    editor.loadProject([], [], [], p.name);
   }
 
   async function handleImport() {
+    importError = null;
     try {
       const project = await importFromFile();
       editor.loadProject(project.topology.devices, project.topology.cables, project.topology.notes, project.name);
     } catch (e) {
-      // user cancelled or error
+      const msg = e instanceof Error ? e.message : 'Import failed';
+      if (msg !== 'Import cancelled') {
+        importError = msg;
+        setTimeout(() => { importError = null; }, 4000);
+      }
     }
   }
 
@@ -60,6 +66,9 @@
   <button class="px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 rounded" onclick={handleExport}>Export</button>
 
   <div class="ml-auto flex items-center gap-2">
+    {#if importError}
+      <span class="text-xs text-red-400">{importError}</span>
+    {/if}
     <span class="text-xs text-gray-500">{editor.projectName}</span>
   </div>
 </nav>

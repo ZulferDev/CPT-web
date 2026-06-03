@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.1] - 2026-06-03
+
+### Fixed
+- **Import hang**: File dialog cancel sekarang reject promise (window focus listener + timeout fallback). User tidak lagi nunggu selamanya.
+- **Import error feedback**: Error message tampil di toolbar (4 detik) kalau import gagal (file corrupt, format salah).
+- **CLI state machine**: `enable` → prompt `#`, `configure terminal` → prompt `(config)#`, `end`/`disable` kembali. State persist untuk session.
+- **Export createdAt**: Setiap re-export update `updatedAt` saja, preserve data asli.
+- **Console port**: Router sekarang punya interface `Console0` (console type).
+- **Invalid CSS**: Dihapus `bg-gray-850` (tidak valid di Tailwind v4).
+
 ## [0.2.0] - 2026-06-03
 
 ### Fixed

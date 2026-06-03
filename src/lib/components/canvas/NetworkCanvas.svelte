@@ -265,6 +265,7 @@
           { id: crypto.randomUUID(), name: 'GigabitEthernet0/0', type: 'gigabit-ethernet', macAddress: generateMAC(), status: 'down' },
           { id: crypto.randomUUID(), name: 'GigabitEthernet0/1', type: 'gigabit-ethernet', macAddress: generateMAC(), status: 'down' },
           { id: crypto.randomUUID(), name: 'Serial0/0/0', type: 'serial', macAddress: generateMAC(), status: 'down' },
+          { id: crypto.randomUUID(), name: 'Console0', type: 'console', macAddress: generateMAC(), status: 'down' },
         ];
       case 'switch':
         return Array.from({ length: 8 }, (_, i) => ({
