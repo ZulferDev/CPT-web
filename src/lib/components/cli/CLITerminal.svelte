@@ -3,6 +3,8 @@
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
   import '@xterm/xterm/css/xterm.css';
+  import { editor } from '$lib/stores/editor.svelte';
+  import { simulator } from '$lib/engine/simulator';
 
   let terminalContainer: HTMLDivElement = $state(null!);
   let term: Terminal;
@@ -21,6 +23,41 @@
   function toggle() {
     isOpen = !isOpen;
     if (isOpen && fitAddon) setTimeout(() => fitAddon.fit(), 50);
+  }
+
+  function handlePing(cmd: string) {
+    const parts = cmd.split(/\s+/);
+    const ip = parts[1];
+
+    if (!ip) {
+      term.writeln('\r\n\x1b[31mUsage: ping <ip-address>\x1b[0m');
+      return;
+    }
+
+    if (!editor.selectedDeviceId) {
+      term.writeln('\r\n\x1b[31mSelect a device on the canvas first.\x1b[0m');
+      return;
+    }
+
+    simulator.initialize(editor.devices, editor.cables);
+    const result = simulator.ping(editor.selectedDeviceId, ip);
+
+    term.writeln('');
+    for (const step of result.steps) {
+      if (step.type === 'result') {
+        if (result.success) {
+          term.writeln(`\x1b[36m${step.detail}\x1b[0m`);
+        } else {
+          term.writeln(`\x1b[31m${step.detail}\x1b[0m`);
+        }
+      } else {
+        term.writeln(`  ${step.detail}`);
+      }
+    }
+
+    if (result.success) {
+      term.writeln(`\r\n\x1b[36mPing statistics: round-trip time = ${result.roundTripTime}ms\x1b[0m`);
+    }
   }
 
   onMount(() => {
@@ -50,18 +87,20 @@
     term.onKey(({ key, domEvent }) => {
       if (domEvent.key === 'Enter') {
         const cmd = inputBuffer.trim().toLowerCase();
+        const rawCmd = inputBuffer.trim();
         inputBuffer = '';
         term.writeln('');
 
         if (cmd === 'help') {
           term.writeln('Available commands:');
-          term.writeln('  help       - Show this message');
-          term.writeln('  enable     - Enter privileged mode');
-          term.writeln('  disable    - Exit privileged mode');
-          term.writeln('  configure  - Enter configuration mode');
-          term.writeln('  end        - Exit to privileged mode');
-          term.writeln('  show       - Show device info');
-          term.writeln('  clear      - Clear terminal');
+          term.writeln('  help            - Show this message');
+          term.writeln('  enable          - Enter privileged mode');
+          term.writeln('  disable         - Exit privileged mode');
+          term.writeln('  configure       - Enter configuration mode');
+          term.writeln('  end             - Exit to privileged mode');
+          term.writeln('  show            - Show device info');
+          term.writeln('  ping <ip>       - Ping an IP (select device first)');
+          term.writeln('  clear           - Clear terminal');
         } else if (cmd === 'enable') {
           mode = 'privileged';
           term.writeln('\x1b[33mPrivileged mode enabled.\x1b[0m');
@@ -78,6 +117,29 @@
           mode = 'privileged';
         } else if (cmd === 'clear') {
           term.clear();
+        } else if (cmd.startsWith('ping')) {
+          if (mode === 'user') {
+            term.writeln('\x1b[31mMust be in privileged mode (enable first).\x1b[0m');
+          } else {
+            handlePing(rawCmd);
+          }
+        } else if (cmd === 'show') {
+          if (editor.selectedDeviceId) {
+            const dev = editor.devices.find(d => d.id === editor.selectedDeviceId);
+            if (dev) {
+              term.writeln(`Device: ${dev.name}`);
+              term.writeln(`Type: ${dev.type}`);
+              term.writeln(`Model: ${dev.model}`);
+              term.writeln(`Status: ${dev.status}`);
+              term.writeln('Interfaces:');
+              for (const iface of dev.interfaces) {
+                const ip = iface.ipAddress ? `${iface.ipAddress}/${iface.subnetMask}` : 'unassigned';
+                term.writeln(`  ${iface.name} - ${ip} (${iface.status})`);
+              }
+            }
+          } else {
+            term.writeln('\x1b[31mNo device selected.\x1b[0m');
+          }
         } else if (cmd) {
           term.writeln(`\x1b[31mUnknown command or invalid: ${cmd}\x1b[0m`);
         }

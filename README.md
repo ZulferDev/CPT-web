@@ -17,13 +17,14 @@ Svelte 5 · TypeScript · Konva.js · Dexie.js · xterm.js · Tailwind CSS v4
 | Device drag on canvas + snap to grid | ✅ Berfungsi |
 | Zoom (scroll) + Pan (shift+drag) | ✅ Berfungsi |
 | Device selection + highlight | ✅ Berfungsi |
-| Config panel (name, IP, mask) | ✅ Berfungsi |
+| Config panel (name, IP, mask, interface toggle) | ✅ Berfungsi |
 | Kabel klik-to-connect (copper/serial/console) | ✅ Berfungsi |
 | Delete device (Del key / button) | ✅ Berfungsi |
-| CLI terminal (xterm.js) | ✅ UI, basic parser |
+| CLI terminal (xterm.js) | ✅ Command parser, ping, show |
 | Export/Import `.cptw` | ✅ Berfungsi |
-| Simulation engine (ICMP, ARP) | 📝 Belum |
-| Auto-save IndexedDB | 📝 Belum |
+| Project dialog (open/save/delete projects) | ✅ Berfungsi |
+| Auto-save IndexedDB (debounce 2s) | ✅ Berfungsi |
+| Simulation engine (ICMP ping, ARP) | ✅ Berfungsi (v0.3.0) |
 
 ## Development
 

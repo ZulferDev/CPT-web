@@ -39,14 +39,17 @@ export async function loadProjectList() {
     .toArray();
 }
 
-export async function saveProject(id: number | undefined, name: string, data: CptwFile) {
+export async function saveProject(id: number | undefined, name: string, data: CptwFile): Promise<number> {
   const now = new Date();
+  let savedId: number;
   if (id != null) {
     await db.projects.put({ id, name, data, updatedAt: now });
+    savedId = id;
   } else {
-    await db.projects.add({ name, data, updatedAt: now });
+    savedId = await db.projects.add({ name, data, updatedAt: now }) as number;
   }
   await loadProjectList();
+  return savedId;
 }
 
 export async function deleteProject(id: number) {

@@ -185,8 +185,8 @@ Tidak perlu login, tidak perlu server.
 - [x] Device library: Router 2811, Switch 2960, PC, Server, Hub, Laptop, Wireless
 - [x] Konfigurasi IP via panel
 - [x] CLI terminal (xterm.js) — dasar, collapsible
-- [ ] Simulasi: ICMP ping, ARP resolution
-- [ ] Auto-save ke IndexedDB (terintegrasi)
+- [x] Simulasi: ICMP ping, ARP resolution (v0.3.0)
+- [x] Auto-save ke IndexedDB (terintegrasi, v0.3.0)
 - [x] Export/Import file `.cptw`
 - [x] Snapping grid + zoom + pan
 
@@ -361,5 +361,5 @@ Operasi:
 22. ✅ Delete device (Del key / button) + delete cable
 23. ✅ Cable port highlight (gold) saat cable mode
 24. ✅ Cable port position kiri/kanan berdasarkan index interface
-11. CLI: xterm.js + command parser
-12. Storage: auto-save IndexedDB + export/import file
+25. ✅ Auto-save ke IndexedDB (debounce 2s) + Project Dialog (v0.3.0)
+26. ✅ Simulation Engine: ICMP ping + ARP resolution, pathfinding BFS (v0.3.0)

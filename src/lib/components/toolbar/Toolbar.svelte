@@ -1,6 +1,7 @@
 <script lang="ts">
   import { editor } from '$lib/stores/editor.svelte';
   import { exportToFile, importFromFile, createNewProject } from '$lib/storage/file';
+  import { saveProject } from '$lib/stores/projects.svelte';
   import type { CptwFile } from '$lib/types';
 
   let importError = $state<string | null>(null);
@@ -12,17 +13,29 @@
     { id: 'note', label: 'Note', icon: '📝' },
   ] as const;
 
-  function handleNew() {
+  async function handleNew() {
     if (editor.devices.length > 0 && !confirm('Create new project? All current work will be lost.')) return;
     const p = createNewProject('Untitled');
-    editor.loadProject([], [], [], p.name);
+    editor.loadProjectFull([], [], [], p.name, undefined, p.createdAt);
   }
 
   async function handleImport() {
     importError = null;
     try {
       const project = await importFromFile();
-      editor.loadProject(project.topology.devices, project.topology.cables, project.topology.notes, project.name);
+      editor.loadProjectFull(
+        project.topology.devices,
+        project.topology.cables,
+        project.topology.notes,
+        project.name,
+        undefined,
+        project.createdAt
+      );
+      const id = await saveProject(undefined, project.name, {
+        ...project,
+        updatedAt: new Date().toISOString(),
+      });
+      editor.projectId = id;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Import failed';
       if (msg !== 'Import cancelled') {
@@ -36,7 +49,7 @@
     const cptw: CptwFile = {
       version: '1.0.0',
       name: editor.projectName,
-      createdAt: new Date().toISOString(),
+      createdAt: editor.createdAt,
       updatedAt: new Date().toISOString(),
       metadata: {},
       topology: { devices: editor.devices, cables: editor.cables, notes: editor.notes },

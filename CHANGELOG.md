@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0] - 2026-06-03
+
+### Added
+- **Auto-save ke IndexedDB**: Setiap perubahan di-editor otomatis tersimpan (debounce 2 detik). Project baru langsung dibuat record pertamanya di IndexedDB.
+- **Project Dialog**: Modal saat pertama kali buka app — daftar project tersimpan, bisa pilih, hapus, buat baru, atau import file.
+- **Simulation Engine (ICMP Ping + ARP)**: Engine routing/simulasi pertama:
+  - `ping <ip>` dari CLI (harus privileged mode, pilih device di canvas dulu)
+  - BFS pathfinding melalui kabel, support switch flooding + MAC learning
+  - Router routing table lookup
+  - ARP resolution per hop
+  - Menampilkan hop-by-hop + RTT
+- **CLI `show` command**: Menampilkan info device yang sedang dipilih (nama, type, interfaces).
+
+### Fixed
+- Import via Toolbar sekarang juga langsung tersimpan ke IndexedDB.
+
 ## [0.2.1] - 2026-06-03
 
 ### Fixed
