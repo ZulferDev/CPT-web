@@ -217,17 +217,12 @@
       previewLayer.add(previewLine);
       previewLayer.draw();
     } else if (origin.deviceId !== dev.id) {
-      const originCandidates = getFreeInterfaces(
-        editor.devices.find(d => d.id === origin.deviceId)!,
-        editor.activeCableType
-      );
-      const originIface = originCandidates.find(i => i.id === origin.interfaceId) ||
-        editor.devices.find(d => d.id === origin.deviceId)?.interfaces.find(i => i.id === origin.interfaceId);
-      if (!originIface) {
-        editor.cableOrigin = null;
-        if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
-        return;
-      }
+      const originDev = editor.devices.find(d => d.id === origin.deviceId);
+      if (!originDev) { clearCableMode(); return; }
+
+      const originFree = getFreeInterfaces(originDev, editor.activeCableType);
+      const originStillFree = originFree.some(i => i.id === origin.interfaceId);
+      if (!originStillFree) { clearCableMode(); return; }
 
       const cable: Cable = {
         id: crypto.randomUUID(),
@@ -236,9 +231,13 @@
         to: { deviceId: dev.id, interfaceId: targetIface.id },
       };
       editor.addCable(cable);
-      editor.cableOrigin = null;
-      if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
+      clearCableMode();
     }
+  }
+
+  function clearCableMode() {
+    editor.cableOrigin = null;
+    if (previewLine) { previewLine.destroy(); previewLine = null; previewLayer.draw(); }
   }
 
   function getPortPosition(dev: Device, ifaceIndex: number): Position {
@@ -463,7 +462,6 @@
       cableLayer.add(line);
     });
     cableLayer.draw();
-    cableLayer.moveToTop();
   }
 </script>
 

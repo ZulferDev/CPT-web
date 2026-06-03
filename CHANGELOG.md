@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2] - 2026-06-03
+
+### Fixed
+- **Cable layer menutupi device layer (CRITICAL)**: `cableLayer.moveToTop()` di `redrawCables()` membuat layer kabel berada di atas device layer. Setelah kabel pertama dibuat, klik pada device (seperti Switch) mengenai kabel, bukan device — sehingga koneksi kedua dan seterusnya gagal. Diperbaiki dengan menghapus `moveToTop()`.
+- **Origin interface tidak divalidasi dengan benar**: `handleCableClick` sekarang menggunakan `getFreeInterfaces()` untuk origin device dan menolak jika interface sudah terpakai device lain.
+- **Kode cable mode dibersihkan**: Ekstrak `clearCableMode()` agar cleanup konsisten di semua path.
+
 ## [0.3.1] - 2026-06-03
 
 ### Fixed
