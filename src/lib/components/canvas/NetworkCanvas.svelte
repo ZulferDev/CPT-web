@@ -20,10 +20,10 @@
     const rect = container.getBoundingClientRect();
     stage = new Konva.Stage({ container, width: rect.width, height: rect.height });
 
-    gridLayer = new Konva.Layer();
-    cableLayer = new Konva.Layer();
-    deviceLayer = new Konva.Layer();
-    previewLayer = new Konva.Layer();
+    gridLayer = new Konva.Layer(); gridLayer.name('grid');
+    cableLayer = new Konva.Layer(); cableLayer.name('cables');
+    deviceLayer = new Konva.Layer(); deviceLayer.name('devices');
+    previewLayer = new Konva.Layer(); previewLayer.name('preview');
     stage.add(gridLayer);
     stage.add(cableLayer);
     stage.add(deviceLayer);
@@ -50,7 +50,10 @@
   });
 
   $effect(() => {
-    if (!stage) return;
+    const devs = editor.devices;
+    const cabs = editor.cables;
+    const sel = editor.selectedDeviceId;
+    if (!stage || !deviceLayer) return;
     redrawDevices();
     redrawCables();
   });
@@ -82,7 +85,8 @@
         return;
       }
 
-      const clickedOnEmpty = e.target === stage || e.target === gridLayer;
+      const targetLayer = e.target.getLayer?.();
+      const clickedOnEmpty = targetLayer === gridLayer || e.target === stage;
 
       if (clickedOnEmpty && editor.activeTool === 'device') {
         addDeviceFromPalette(stage.getPointerPosition()!);
@@ -196,6 +200,12 @@
     if (!gridLayer) return;
     gridLayer.destroyChildren();
     const rect = container.getBoundingClientRect();
+
+    gridLayer.add(new Konva.Rect({
+      x: 0, y: 0, width: rect.width, height: rect.height,
+      fill: '#1a202c', name: 'bg',
+    }));
+
     for (let x = 0; x < rect.width; x += GRID) {
       gridLayer.add(new Konva.Line({ points: [x, 0, x, rect.height], stroke: '#2d3748', strokeWidth: 0.5 }));
     }
